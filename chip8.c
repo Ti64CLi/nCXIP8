@@ -158,6 +158,7 @@ void emulate_cycle(void) {
 	cpu_debug("Emulating cycle...");
 	fetch_opcode();
 	opcodeList[(activeCPU->opcode & 0xF000) >> 12](); //decoding and executing opcode
+	activeCPU->pc += 2;
 }
 
 void fetch_opcode(void) {

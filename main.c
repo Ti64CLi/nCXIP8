@@ -34,9 +34,10 @@ int main(int argc, char *argv[]){
 	init_opcode_list();
 	
 	while(!isKeyPressed(KEY_NSPIRE_ESC) && !isKeyPressed(KEY_NSPIRE_Q)) {
-		if(isKeyPressed(KEY_NSPIRE_ENTER)) //DEBUG only
+		if(isKeyPressed(KEY_NSPIRE_ENTER)) {//DEBUG only
 			emulate_cycle();
-		
+			while(isKeyPressed(KEY_NSPIRE_ENTER));
+		}
 		//TODO
 	}
 	
