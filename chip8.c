@@ -67,7 +67,7 @@ int end_display(void) {
 }
 
 int init_CPU(cpu_t *cpu) {
-	cpu->cpuMode = DEFAULT;
+	cpu->cpuMode = DEFAULT; //beginning of SUPER and EXTENDED mode. DEFAULT is 64x32, SUPER is 128x64 and EXTENDED add CHIP-8E support
 	
 	cpu->pc = 0x200;
 	cpu->sp = 0;
@@ -104,7 +104,7 @@ int init_screen(screen_t *screen, uint8_t w, uint8_t h, uint32_t pixelOnColor, u
 	screen->pixelOffColor = pixelOffColor; //default = 0x000000
 	screen->borderColor = borderColor; //default = 0x666666
 	
-	screen->datas = calloc(w*h, sizeof(uint8_t));
+	screen->datas = calloc(w * h, sizeof(uint8_t));
 	screen->drawFlag = true;
 	
 	return 0;
@@ -260,7 +260,7 @@ void opcode_CLS(void) {
 
 void opcode_RET(void) {
 	cpu_debug("  - RET");
-	activeCPU->pc = activeCPU->stack[--(activeCPU->sp)] - 2; //-2 is because 2 is always added to pc at the end of a cycle
+	activeCPU->pc = activeCPU->stack[--(activeCPU->sp)]; //-2 is because 2 is always added to pc at the end of a cycle
 }
 void opcode_JP(void) {
 	cpu_debug("  - JP");
@@ -313,7 +313,7 @@ void opcode_XOR(void) {
 }
 void opcode_ADD(void) {
 	cpu_debug("  - ADD");
-	activeCPU->V[0xF] = (activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] + activeCPU->V[(activeCPU->opcode & 0xF0) >> 4]) >> 8;
+	activeCPU->V[0xF] = ((activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] + activeCPU->V[(activeCPU->opcode & 0xF0) >> 4]) > 255 ? 1 : 0);
 	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] += activeCPU->V[(activeCPU->opcode & 0xF0) >> 4];
 }
 void opcode_SUB(void) {
@@ -324,7 +324,7 @@ void opcode_SUB(void) {
 void opcode_SHR(void) {
 	cpu_debug("  - SHR");
 	activeCPU->V[0xF] = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] & 1;
-	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] >> 1;
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & /*0xF0*/0xF00) >> /*4*/8] >> 1;//try with VX<<1 instead of VY<<1
 }
 void opcode_SUBN(void) {
 	cpu_debug("  - SUBN");
@@ -334,7 +334,7 @@ void opcode_SUBN(void) {
 void opcode_SHL(void) {
 	cpu_debug("  - SHL");
 	activeCPU->V[0xF] = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] & 128;
-	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] << 1;
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & /*0xF0*/0xF00) >> /*4*/8] << 1; //try with VX<<1 instead of VY<<1
 }
 void opcode_SNE(void) {
 	cpu_debug("  - SNE");
@@ -359,9 +359,10 @@ void opcode_DRW(void) {
 	int startx = activeCPU->V[(activeCPU->opcode &0xF00) >> 8], starty = activeCPU->V[(activeCPU->opcode &0xF0) >> 4];
 	activeCPU->V[0xF] = 0;
 	for(int y = 0; y < height; y++) {
+		int byte = activeCPU->memory[activeCPU->I + y];
 		for(int x = 0; x < 8; x++) {
-			int bit = activeCPU->memory[activeCPU->I + y] >> (7-x);
-			int t = (starty+y) * activeScreen->width + startx + x;
+			int bit = (byte & (128 >> x)) >> (7-x);
+			int t = (starty + y) * activeScreen->width + startx + x;
 			if(bit == 1 && activeScreen->datas[t] == 1)
 				activeCPU->V[0xF] = 1;
 			activeScreen->datas[t] ^= t;
@@ -404,7 +405,7 @@ void opcode_STO_BCD(void) {
 	int vx = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
 	activeCPU->memory[i] = vx / 100;
 	activeCPU->memory[i+1] = (vx % 100) / 10;
-	activeCPU->memory[i] = vx % 10;
+	activeCPU->memory[i+2] = vx % 10;
 }
 void opcode_PUSH(void) {
 	cpu_debug("  - PUSH");
