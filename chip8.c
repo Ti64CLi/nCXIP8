@@ -135,12 +135,14 @@ void set_active_keypad(key8_t *keypad) {
 }
 
 //general purposes functions
-int open_chip8_rom(const char *filename) {
+int open_chip8_ROM(const char *filename) {
 	FILE *rom = NULL;
 	rom = fopen(filename, "rb");
 	
 	if(rom != NULL) {
-		fread(&(activeCPU->memory[0x200]), sizeof(uint8_t) * (MEMORYLENGTH - 0x200), 1, rom);
+		/*fseek(rom, 0L, SEEK_END);
+		long int size = ftell(rom);*/ // Not working ???
+		fread(&(activeCPU->memory[0x200]), sizeof(uint8_t) * /*size*/(MEMORYLENGTH - 0x200), 1, rom);
 		fclose(rom);
 		
 		return 0;
@@ -152,8 +154,17 @@ int open_chip8_rom(const char *filename) {
 	return 1;
 }
 
+void emulate_cycle(void) {
+	cpu_debug("Emulating cycle...");
+	fetch_opcode();
+	opcodeList[(activeCPU->opcode & 0xF000) >> 12](); //decoding and executing opcode
+}
+
 void fetch_opcode(void) {
 	activeCPU->opcode = (activeCPU->memory[activeCPU->pc] << 8) | activeCPU->memory[activeCPU->pc + 1];
+	char buf[28];
+	sprintf(buf, "->Fetched opcode 0x%4.4X :", activeCPU->opcode);
+	cpu_debug(buf);
 }
 
 void init_opcode_list(void) {
@@ -206,53 +217,130 @@ void init_opcode_list(void) {
 	opcodeRegisters[0x65 - REGISTERBASEADDRESS] = opcode_POP;
 }
 
-void emulate_cycle(void) {
-	
+void opcode_NULL(void) {
+	cpu_debug("  - Unknown opcode !");
 }
 
-void opcode_NULL(void) {}
-
 void opcode_CLS(void) {
+	cpu_debug("  - CLS");
 	memset(activeScreen->datas, 0, activeScreen->width * activeScreen->height);
 }
 
 void opcode_RET(void) {
+	cpu_debug("  - RET");
 	
 }
-void opcode_JP(void) {}
-void opcode_CALL(void) {}
-void opcode_SE_num(void) {}
-void opcode_SNE_num(void) {}
-void opcode_SE(void) {}
-void opcode_LD_num(void) {}
-void opcode_ADD_num(void) {}
-void opcode_LD(void) {}
-void opcode_OR(void) {}
-void opcode_AND(void) {}
-void opcode_XOR(void) {}
-void opcode_ADD(void) {}
-void opcode_SUB(void) {}
-void opcode_SHR(void) {}
-void opcode_SUBN(void) {}
-void opcode_SHL(void) {}
-void opcode_SNE(void) {}
-void opcode_LDI(void) {}
-void opcode_JPA(void) {}
-void opcode_RND(void) {}
-void opcode_DRW(void) {}
-void opcode_SKP(void) {}
-void opcode_SKNP(void) {}
-void opcode_LD_delaytimer(void) {}
-void opcode_LD_key(void) {}
-void opcode_STO_delaytimer(void) {}
-void opcode_STO_soundtimer(void) {}
-void opcode_ADDI(void) {}
-void opcode_HEXI(void) {}
-void opcode_STO_BCD(void) {}
-void opcode_PUSH(void) {}
-void opcode_POP(void) {}
+void opcode_JP(void) {
+	cpu_debug("  - JP");
+}
+void opcode_CALL(void) {
+	cpu_debug("  - CALL");
+}
+void opcode_SE_num(void) {
+	cpu_debug("  - SE_num");
+}
+void opcode_SNE_num(void) {
+	cpu_debug("  - SNE_num");
+}
+void opcode_SE(void) {
+	cpu_debug("  - SE");
+}
+void opcode_LD_num(void) {
+	cpu_debug("  - LD_num");
+}
+void opcode_ADD_num(void) {
+	cpu_debug("  - ADD_num");
+}
+void opcode_LD(void) {
+	cpu_debug("  - LD");
+}
+void opcode_OR(void) {
+	cpu_debug("  - OR");
+}
+void opcode_AND(void) {
+	cpu_debug("  - AND");
+}
+void opcode_XOR(void) {
+	cpu_debug("  - XOR");
+}
+void opcode_ADD(void) {
+	cpu_debug("  - ADD");
+}
+void opcode_SUB(void) {
+	cpu_debug("  - SUB");
+}
+void opcode_SHR(void) {
+	cpu_debug("  - SHR");
+}
+void opcode_SUBN(void) {
+	cpu_debug("  - SUBN");
+}
+void opcode_SHL(void) {
+	cpu_debug("  - SHL");
+}
+void opcode_SNE(void) {
+	cpu_debug("  - SNE");
+}
+void opcode_LDI(void) {
+	cpu_debug("  - LDI");
+}
+void opcode_JPA(void) {
+	cpu_debug("  - JPA");
+}
+void opcode_RND(void) {
+	cpu_debug("  - RND");
+}
+void opcode_DRW(void) {
+	cpu_debug("  - DRW");
+}
+void opcode_SKP(void) {
+	cpu_debug("  - SKP");
+}
+void opcode_SKNP(void) {
+	cpu_debug("  - SKNP");
+}
+void opcode_LD_delaytimer(void) {
+	cpu_debug("  - LD_delaytimer");
+}
+void opcode_LD_key(void) {
+	cpu_debug("  - LD_key");
+}
+void opcode_STO_delaytimer(void) {
+	cpu_debug("  - STO_delaytimer");
+}
+void opcode_STO_soundtimer(void) {
+	cpu_debug("  - STO_soundtimer");
+}
+void opcode_ADDI(void) {
+	cpu_debug("  - ADDI");
+}
+void opcode_HEXI(void) {
+	cpu_debug("  - SPRITEI");
+}
+void opcode_STO_BCD(void) {
+	cpu_debug("  - STO_BCD");
+}
+void opcode_PUSH(void) {
+	cpu_debug("  - PUSH");
+}
+void opcode_POP(void) {
+	cpu_debug("  - POP");
+}
 
-void opcode_SYSCALLS_list(void) {}
-void opcode_ARITHMETICS_list(void) {}
-void opcode_KEYS_list(void) {}
-void opcode_REGISTERS_list(void) {}
+void opcode_SYSCALLS_list(void) {
+	cpu_debug("->Syscall :");
+	if(activeCPU->opcode >= 0xE0)
+		opcodeSyscalls[(activeCPU->opcode & 0xFF) - SYSCALLBASEADDRESS]();
+}
+void opcode_ARITHMETICS_list(void) {
+	cpu_debug("->Arithmetic :");
+	opcodeArithmetics[(activeCPU->opcode & 0xF) - ARITHMETICBASEADDRESS]();
+}
+void opcode_KEYS_list(void) {
+	cpu_debug("->Key :");
+	opcodeKeys[(activeCPU->opcode & 0xFF) - KEYBASEADDRESS]();
+}
+void opcode_REGISTERS_list(void) {
+	cpu_debug("->Register :");
+	opcodeRegisters[(activeCPU->opcode & 0xFF) - REGISTERBASEADDRESS]();
+}

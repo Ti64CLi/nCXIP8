@@ -1,6 +1,13 @@
 #ifndef CPU_H
 #define CPU_H
 
+#define cpu_debug(MSG) do {printf(MSG); printf("\n"); } while(0)
+
+#define C8SCREENWIDTH 64
+#define C8SCREENHEIGHT 32
+#define SC8SCREENWIDTH 128
+#define SC8SCREENHEIGHT 64
+
 #define NUMBEROFREGISTER 16
 #define NUMBEROFKEY 16
 #define MEMORYLENGTH 4096

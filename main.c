@@ -18,7 +18,27 @@ int main(int argc, char *argv[]){
 		return 0;
 	}
 	
+	cpu_t cpu;
+	screen_t screen;
+	key8_t keypad;
 	
+	set_active_CPU(&cpu);
+	init_active_CPU();
+	set_active_screen(&screen);
+	init_active_screen(C8SCREENWIDTH, C8SCREENHEIGHT, 0xFFFFFF, 0x000000, 0x666666);
+	set_active_keypad(&keypad);
+	
+	if(open_chip8_ROM(argv[1]))
+		return 1;
+	
+	init_opcode_list();
+	
+	while(!isKeyPressed(KEY_NSPIRE_ESC) && !isKeyPressed(KEY_NSPIRE_Q)) {
+		if(isKeyPressed(KEY_NSPIRE_ENTER)) //DEBUG only
+			emulate_cycle();
+		
+		//TODO
+	}
 	
 	return 0;
 }
