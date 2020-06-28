@@ -11,7 +11,7 @@ LDFLAGS =
 ZEHNFLAGS = --name "nCXIP8" --author "Ti64CLi++"
 
 ifeq ($(DEBUG),FALSE)
-	GCCFLAGS += -Os 
+	GCCFLAGS += -Os
 	LDFLAGS += -flto
 else
 	GCCFLAGS += -O0 -g
@@ -44,6 +44,11 @@ $(EXE).tns: $(EXE).elf
 	$(GENZEHN) --input $^ --output $@.zehn $(ZEHNFLAGS)
 	make-prg $@.zehn $@
 	rm $@.zehn
+
+debugvar:
+	$(eval GCCFLAGS += -D DEBUG)
+
+debug: debugvar all
 
 clean:
 	rm -f $(OBJS) $(DISTDIR)/$(EXE).tns $(DISTDIR)/$(EXE).elf $(DISTDIR)/$(EXE).zehn

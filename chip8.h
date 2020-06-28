@@ -1,7 +1,11 @@
 #ifndef CPU_H
 #define CPU_H
 
-#define cpu_debug(MSG) do {printf(MSG); printf("\n"); } while(0)
+#ifdef DEBUG
+	#define cpu_debug(MSG) do {printf(MSG); printf("\n"); } while(0)
+#else
+	#define cpu_debug(MSG) do asm volatile("nop"); while(0)
+#endif
 
 #define C8SCREENWIDTH 64
 #define C8SCREENHEIGHT 32
@@ -15,8 +19,16 @@
 
 typedef uint16_t reg16_t;
 typedef uint8_t reg8_t;
+
+typedef enum {
+	SUPER = 2,
+	EXTENDED,
+	DEFAULT
+} cpu_type_t;
 	
 typedef struct {
+	cpu_type_t cpuMode;
+	
 	reg16_t opcode;
 	reg16_t pc;
 	reg8_t sp;
@@ -54,10 +66,13 @@ int end_display(void);
 int init_CPU(cpu_t *); //init the given CPU
 int init_active_CPU(void); //init the CPU currently used
 void set_active_CPU(cpu_t *); //change the working CPU
+
 int init_screen(screen_t *, uint8_t, uint8_t, uint32_t, uint32_t, uint32_t); //init the given screen
 int init_active_screen(uint8_t, uint8_t, uint32_t, uint32_t, uint32_t); //init the screen currently used
 void set_active_screen(screen_t *); //change the working screen
 int refresh_screen(screen_t *);
+int refresh_active_screen(void);
+
 int init_keypad(key8_t *); //init the given keypad
 int init_active_keypad(void); //init the keypad currently used
 void set_active_keypad(key8_t *); //change the working keypad

@@ -1,5 +1,7 @@
 #include <ngc.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include "chip8.h"
 
 #define SYSCALLBASEADDRESS 0xE0
@@ -52,18 +54,21 @@ int init_display(void) {
 	gui_gc_begin(gc);
 	gui_gc_setRegion(gc, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 	
+	gui_gc_setColor(gc, activeScreen->borderColor);
+	gui_gc_fillRect(gc, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+	
 	return 0;
 }
 
 int end_display(void) {
-	free(activeScreen);
-	
 	gui_gc_finish(gc);
 	
 	return 0;
 }
 
 int init_CPU(cpu_t *cpu) {
+	cpu->cpuMode = DEFAULT;
+	
 	cpu->pc = 0x200;
 	cpu->sp = 0;
 	
@@ -93,7 +98,7 @@ void set_active_CPU(cpu_t *cpu) {
 int init_screen(screen_t *screen, uint8_t w, uint8_t h, uint32_t pixelOnColor, uint32_t pixelOffColor, uint32_t borderColor) {
 	screen->width = w; //support for extended screen
 	screen->height = h;
-	screen->scale = 4;
+	screen->scale = 4; //TODO : add support for activeCPU->cpuMode
 	
 	screen->pixelOnColor = pixelOnColor; //default = 0xFFFFFF
 	screen->pixelOffColor = pixelOffColor; //default = 0x000000
@@ -110,12 +115,37 @@ int init_active_screen(uint8_t w, uint8_t h, uint32_t pixelOnColor, uint32_t pix
 }
 
 void set_active_screen(screen_t *screen) {
+	if(activeScreen != screen)
+		screen->drawFlag = true;
 	activeScreen = screen;
 }
 
 int refresh_screen(screen_t *screen) {
-	//TODO
+	int w = screen->width * screen->scale;
+	int h = screen->height * screen->scale;
+	int startx = (SCREEN_WIDTH - w) / 2;
+	int starty = (SCREEN_HEIGHT - h) / 2;
+	
+	gui_gc_setColor(gc, screen->pixelOffColor);
+	gui_gc_fillRect(gc, startx, starty, w, h);
+	
+	gui_gc_setColor(gc, screen->pixelOnColor);
+	for(int y = 0; y < screen->height; y++) {
+		for(int x = 0; x < screen->width; x++) {
+			if(screen->datas[y * screen->width + x] == 1)
+				gui_gc_fillRect(gc, startx + x * screen->scale, starty + y * screen->scale, screen->scale, screen->scale);
+		}
+	}
+	
+	gui_gc_blit_to_screen(gc);
+	
+	screen->drawFlag = false;
+	
 	return 0;
+}
+
+int refresh_active_screen(void) {
+	return refresh_screen(activeScreen);
 }
 
 int init_keypad(key8_t *keypad) {
@@ -142,7 +172,7 @@ int open_chip8_ROM(const char *filename) {
 	if(rom != NULL) {
 		/*fseek(rom, 0L, SEEK_END);
 		long int size = ftell(rom);*/ // Not working ???
-		fread(&(activeCPU->memory[0x200]), sizeof(uint8_t) * /*size*/(MEMORYLENGTH - 0x200), 1, rom);
+		fread(activeCPU->memory+0x200, sizeof(uint8_t) * /*size*/(MEMORYLENGTH - 0x200), 1, rom);
 		fclose(rom);
 		
 		return 0;
@@ -225,107 +255,166 @@ void opcode_NULL(void) {
 void opcode_CLS(void) {
 	cpu_debug("  - CLS");
 	memset(activeScreen->datas, 0, activeScreen->width * activeScreen->height);
+	activeScreen->drawFlag = true;
 }
 
 void opcode_RET(void) {
 	cpu_debug("  - RET");
-	
+	activeCPU->pc = activeCPU->stack[--(activeCPU->sp)] - 2; //-2 is because 2 is always added to pc at the end of a cycle
 }
 void opcode_JP(void) {
 	cpu_debug("  - JP");
+	activeCPU->pc = (activeCPU->opcode & 0xFFF) - 2; //same as RET
 }
 void opcode_CALL(void) {
 	cpu_debug("  - CALL");
+	activeCPU->stack[activeCPU->sp++] = activeCPU->pc;
+	activeCPU->pc = (activeCPU->opcode & 0xFFF) - 2;
 }
 void opcode_SE_num(void) {
 	cpu_debug("  - SE_num");
+	if(activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] == (activeCPU->opcode & 0xFF))
+		activeCPU->pc += 2;
 }
 void opcode_SNE_num(void) {
 	cpu_debug("  - SNE_num");
+	if(activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] != (activeCPU->opcode & 0xFF))
+		activeCPU->pc += 2;
 }
 void opcode_SE(void) {
 	cpu_debug("  - SE");
+	if(activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] == activeCPU->V[(activeCPU->opcode & 0xF0) >> 4])
+		activeCPU->pc += 2;
 }
 void opcode_LD_num(void) {
 	cpu_debug("  - LD_num");
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->opcode & 0xFF;
 }
 void opcode_ADD_num(void) {
 	cpu_debug("  - ADD_num");
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] += activeCPU->opcode & 0xFF;
+	
 }
 void opcode_LD(void) {
 	cpu_debug("  - LD");
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4];
 }
 void opcode_OR(void) {
 	cpu_debug("  - OR");
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] |= activeCPU->V[(activeCPU->opcode & 0xF0) >> 4];
 }
 void opcode_AND(void) {
 	cpu_debug("  - AND");
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] &= activeCPU->V[(activeCPU->opcode & 0xF0) >> 4];
 }
 void opcode_XOR(void) {
 	cpu_debug("  - XOR");
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] ^= activeCPU->V[(activeCPU->opcode & 0xF0) >> 4];
 }
 void opcode_ADD(void) {
 	cpu_debug("  - ADD");
+	activeCPU->V[0xF] = (activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] + activeCPU->V[(activeCPU->opcode & 0xF0) >> 4]) >> 8;
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] += activeCPU->V[(activeCPU->opcode & 0xF0) >> 4];
 }
 void opcode_SUB(void) {
 	cpu_debug("  - SUB");
+	activeCPU->V[0xF] = (activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] < activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] ? 0 : 1);
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] -= activeCPU->V[(activeCPU->opcode & 0xF0) >> 4];
 }
 void opcode_SHR(void) {
 	cpu_debug("  - SHR");
+	activeCPU->V[0xF] = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] & 1;
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] >> 1;
 }
 void opcode_SUBN(void) {
 	cpu_debug("  - SUBN");
+	activeCPU->V[0xF] = (activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] > activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] ? 0 : 1);
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] - activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
 }
 void opcode_SHL(void) {
 	cpu_debug("  - SHL");
+	activeCPU->V[0xF] = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] & 128;
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] << 1;
 }
 void opcode_SNE(void) {
 	cpu_debug("  - SNE");
+	if(activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] != activeCPU->V[(activeCPU->opcode & 0xF0) >> 4])
+		activeCPU->pc += 2;
 }
 void opcode_LDI(void) {
 	cpu_debug("  - LDI");
+	activeCPU->I = activeCPU->opcode & 0xFFF;
 }
 void opcode_JPA(void) {
 	cpu_debug("  - JPA");
+	activeCPU->pc = activeCPU->V[0] + (activeCPU->opcode & 0xFFF) - 2;
 }
 void opcode_RND(void) {
 	cpu_debug("  - RND");
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = (rand() % 256) & (activeCPU->opcode & 0xFF);
 }
 void opcode_DRW(void) {
 	cpu_debug("  - DRW");
+	int height = activeCPU->opcode & 0xF;
+	int startx = activeCPU->V[(activeCPU->opcode &0xF00) >> 8], starty = activeCPU->V[(activeCPU->opcode &0xF0) >> 4];
+	activeCPU->V[0xF] = 0;
+	for(int y = 0; y < height; y++) {
+		for(int x = 0; x < 8; x++) {
+			int bit = activeCPU->memory[activeCPU->I + y] >> (7-x);
+			int t = (starty+y) * activeScreen->width + startx + x;
+			if(bit == 1 && activeScreen->datas[t] == 1)
+				activeCPU->V[0xF] = 1;
+			activeScreen->datas[t] ^= t;
+		}
+	}
+	activeScreen->drawFlag = true;
 }
-void opcode_SKP(void) {
+void opcode_SKP(void) { //TODO
 	cpu_debug("  - SKP");
 }
-void opcode_SKNP(void) {
+void opcode_SKNP(void) { //TODO
 	cpu_debug("  - SKNP");
 }
 void opcode_LD_delaytimer(void) {
 	cpu_debug("  - LD_delaytimer");
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->delayTimer;
 }
 void opcode_LD_key(void) {
 	cpu_debug("  - LD_key");
 }
 void opcode_STO_delaytimer(void) {
 	cpu_debug("  - STO_delaytimer");
+	activeCPU->delayTimer = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
 }
 void opcode_STO_soundtimer(void) {
 	cpu_debug("  - STO_soundtimer");
+	activeCPU->soundTimer = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
 }
 void opcode_ADDI(void) {
 	cpu_debug("  - ADDI");
+	activeCPU->I += activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
 }
 void opcode_HEXI(void) {
 	cpu_debug("  - SPRITEI");
+	activeCPU->I = 0x50 + 5 * activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
 }
 void opcode_STO_BCD(void) {
 	cpu_debug("  - STO_BCD");
+	int i = activeCPU->I;
+	int vx = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
+	activeCPU->memory[i] = vx / 100;
+	activeCPU->memory[i+1] = (vx % 100) / 10;
+	activeCPU->memory[i] = vx % 10;
 }
 void opcode_PUSH(void) {
 	cpu_debug("  - PUSH");
+	for(int x = 0; x <= ((activeCPU->opcode & 0xF00) >> 8); x++)
+		activeCPU->memory[activeCPU->I++] = activeCPU->V[x];
 }
 void opcode_POP(void) {
 	cpu_debug("  - POP");
+	for(int x = 0; x <= ((activeCPU->opcode & 0xF00) >> 8); x++)
+		activeCPU->V[x] = activeCPU->memory[activeCPU->I++];
 }
 
 void opcode_SYSCALLS_list(void) {
@@ -345,3 +434,5 @@ void opcode_REGISTERS_list(void) {
 	cpu_debug("->Register :");
 	opcodeRegisters[(activeCPU->opcode & 0xFF) - REGISTERBASEADDRESS]();
 }
+
+//TODO : Add Super CHIP-8 Instructions
