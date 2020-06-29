@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
 			while(isKeyPressed(KEY_NSPIRE_D));
 		}
 		
-		if(screen.drawFlag == true) //TODO : add support for activeScreen
+		if(screen.drawFlag == 1) //TODO : add support for activeScreen
 			refresh_active_screen();
 			
 		//TODO : keys and timers

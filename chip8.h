@@ -52,7 +52,7 @@ typedef struct {
 	uint32_t borderColor;
 	
 	uint8_t *datas;
-	bool drawFlag;
+	reg8_t drawFlag;
 } screen_t;
 
 typedef struct {

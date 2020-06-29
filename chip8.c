@@ -105,7 +105,7 @@ int init_screen(screen_t *screen, uint8_t w, uint8_t h, uint32_t pixelOnColor, u
 	screen->borderColor = borderColor; //default = 0x666666
 	
 	screen->datas = calloc(w * h, sizeof(uint8_t));
-	screen->drawFlag = true;
+	screen->drawFlag = 1;
 	
 	return 0;
 }
@@ -116,7 +116,7 @@ int init_active_screen(uint8_t w, uint8_t h, uint32_t pixelOnColor, uint32_t pix
 
 void set_active_screen(screen_t *screen) {
 	if(activeScreen != screen)
-		screen->drawFlag = true;
+		screen->drawFlag = 1;
 	activeScreen = screen;
 }
 
@@ -139,7 +139,7 @@ int refresh_screen(screen_t *screen) {
 	
 	gui_gc_blit_to_screen(gc);
 	
-	screen->drawFlag = false;
+	screen->drawFlag = 0;
 	
 	return 0;
 }
@@ -255,16 +255,17 @@ void opcode_NULL(void) {
 void opcode_CLS(void) {
 	cpu_debug("  - CLS");
 	memset(activeScreen->datas, 0, activeScreen->width * activeScreen->height);
-	activeScreen->drawFlag = true;
+	//activeScreen->datas = { 0 };
+	activeScreen->drawFlag = 1;
 }
 
 void opcode_RET(void) {
 	cpu_debug("  - RET");
-	activeCPU->pc = activeCPU->stack[--(activeCPU->sp)]; //-2 is because 2 is always added to pc at the end of a cycle
+	activeCPU->pc = activeCPU->stack[--(activeCPU->sp)];
 }
 void opcode_JP(void) {
 	cpu_debug("  - JP");
-	activeCPU->pc = (activeCPU->opcode & 0xFFF) - 2; //same as RET
+	activeCPU->pc = (activeCPU->opcode & 0xFFF) - 2;
 }
 void opcode_CALL(void) {
 	cpu_debug("  - CALL");
@@ -288,12 +289,11 @@ void opcode_SE(void) {
 }
 void opcode_LD_num(void) {
 	cpu_debug("  - LD_num");
-	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->opcode & 0xFF;
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = (activeCPU->opcode & 0xFF);
 }
 void opcode_ADD_num(void) {
 	cpu_debug("  - ADD_num");
-	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] += activeCPU->opcode & 0xFF;
-	
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] += (activeCPU->opcode & 0xFF);
 }
 void opcode_LD(void) {
 	cpu_debug("  - LD");
@@ -358,17 +358,22 @@ void opcode_DRW(void) {
 	int height = activeCPU->opcode & 0xF;
 	int startx = activeCPU->V[(activeCPU->opcode &0xF00) >> 8], starty = activeCPU->V[(activeCPU->opcode &0xF0) >> 4];
 	activeCPU->V[0xF] = 0;
+	
 	for(int y = 0; y < height; y++) {
 		int byte = activeCPU->memory[activeCPU->I + y];
+		
 		for(int x = 0; x < 8; x++) {
 			int bit = (byte & (128 >> x)) >> (7-x);
 			int t = (starty + y) * activeScreen->width + startx + x;
+			
 			if(bit == 1 && activeScreen->datas[t] == 1)
 				activeCPU->V[0xF] = 1;
+			
 			activeScreen->datas[t] ^= t;
 		}
 	}
-	activeScreen->drawFlag = true;
+	
+	activeScreen->drawFlag = 1;
 }
 void opcode_SKP(void) { //TODO
 	cpu_debug("  - SKP");
@@ -420,7 +425,7 @@ void opcode_POP(void) {
 
 void opcode_SYSCALLS_list(void) {
 	cpu_debug("->Syscall :");
-	if(activeCPU->opcode >= 0xE0)
+	//if(activeCPU->opcode >= 0xE0)
 		opcodeSyscalls[(activeCPU->opcode & 0xFF) - SYSCALLBASEADDRESS]();
 }
 void opcode_ARITHMETICS_list(void) {
