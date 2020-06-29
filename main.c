@@ -36,7 +36,7 @@ int main(int argc, char *argv[]){
 	
 	init_display();
 	
-	while(!isKeyPressed(KEY_NSPIRE_ESC) && !isKeyPressed(KEY_NSPIRE_Q)) {
+	while(!isKeyPressed(KEY_NSPIRE_ESC)) {
 #ifdef DEBUG
 		if(isKeyPressed(KEY_NSPIRE_ENTER)) {//DEBUG only
 			char buf[12];
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
 #ifdef DEBUG
 			while(isKeyPressed(KEY_NSPIRE_ENTER));
 		}
-#endif
+
 		if(isKeyPressed(KEY_NSPIRE_S)) { //For debug purposes only
 			for(int i = 0; i < 8; i++)
 				printf("V%1.1X = 0x%2.2X  V%1.1X = 0x%2.2X\n", i, cpu.V[i], i+8, cpu.V[i+8]);
@@ -55,10 +55,11 @@ int main(int argc, char *argv[]){
 			printf("I = 0x%4.4X\n", cpu.I);
 			while(isKeyPressed(KEY_NSPIRE_D));
 		}
+#endif
 		
 		refresh_active_screen();
 		
-		msleep(10);
+		msleep(5);
 			
 		//TODO : keys and timers
 		//Timers : use Timer 1 or 2 (0x900C0000 or 0x900D0000)
@@ -67,7 +68,7 @@ int main(int argc, char *argv[]){
 			cpu.delayTimer--;
 		if(cpu.soundTimer > 0) {
 			if(--cpu.soundTimer == 0)
-				cpu_debug("BIIIIP!!");
+				printf("BIIIIP!!\n");
 		}
 	}
 	

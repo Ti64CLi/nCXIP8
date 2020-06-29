@@ -380,12 +380,12 @@ void opcode_DRW(void) {
 }
 void opcode_SKP(void) { //TODO
 	cpu_debug("  - SKP");
-	if(isKeyPressed(activeKeypad->nspireKeys[activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]]))
+	if(isKeyPressed(/*activeKeypad->nspireKeys*/defaultNspireKeys[(activeCPU->V[(activeCPU->opcode & 0xF00) >> 8])]))
 		activeCPU->pc += 2;
 }
 void opcode_SKNP(void) { //TODO
 	cpu_debug("  - SKNP");
-	if(!isKeyPressed(activeKeypad->nspireKeys[activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]]))
+	if(!(isKeyPressed(/*activeKeypad->nspireKeys*/defaultNspireKeys[(activeCPU->V[(activeCPU->opcode & 0xF00) >> 8])])))
 		activeCPU->pc += 2;
 }
 void opcode_LD_delaytimer(void) {

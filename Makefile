@@ -8,7 +8,7 @@ GENZEHN = genzehn
 
 GCCFLAGS = -Wall -W -marm
 LDFLAGS =
-ZEHNFLAGS = --name "nCXIP8" --author "Ti64CLi++"
+ZEHNFLAGS = --name "nCXIP8 v1.0" --author "Ti64CLi++"
 
 ifeq ($(DEBUG),FALSE)
 	GCCFLAGS += -Os
