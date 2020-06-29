@@ -121,6 +121,9 @@ void set_active_screen(screen_t *screen) {
 }
 
 int refresh_screen(screen_t *screen) {
+	if(!screen->drawFlag)
+		return 1;
+	
 	int w = screen->width * screen->scale;
 	int h = screen->height * screen->scale;
 	int startx = (SCREEN_WIDTH - w) / 2;
@@ -261,7 +264,7 @@ void opcode_CLS(void) {
 
 void opcode_RET(void) {
 	cpu_debug("  - RET");
-	activeCPU->pc = activeCPU->stack[--(activeCPU->sp)];
+	activeCPU->pc = activeCPU->stack[--activeCPU->sp];
 }
 void opcode_JP(void) {
 	cpu_debug("  - JP");
@@ -318,23 +321,23 @@ void opcode_ADD(void) {
 }
 void opcode_SUB(void) {
 	cpu_debug("  - SUB");
-	activeCPU->V[0xF] = (activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] < activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] ? 0 : 1);
+	activeCPU->V[0xF] = (activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] > activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] ? 1 : 0);
 	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] -= activeCPU->V[(activeCPU->opcode & 0xF0) >> 4];
 }
 void opcode_SHR(void) {
 	cpu_debug("  - SHR");
-	activeCPU->V[0xF] = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] & 1;
-	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & /*0xF0*/0xF00) >> /*4*/8] >> 1;//try with VX<<1 instead of VY<<1
+	activeCPU->V[0xF] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] & 1;
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0/*0xF00*/) >> 4/*8*/] >> 1;//try with VX<<1 instead of VY<<1
 }
 void opcode_SUBN(void) {
 	cpu_debug("  - SUBN");
-	activeCPU->V[0xF] = (activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] > activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] ? 0 : 1);
+	activeCPU->V[0xF] = (activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] < activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] ? 1 : 0);
 	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] - activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
 }
 void opcode_SHL(void) {
 	cpu_debug("  - SHL");
-	activeCPU->V[0xF] = activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] & 128;
-	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & /*0xF0*/0xF00) >> /*4*/8] << 1; //try with VX<<1 instead of VY<<1
+	activeCPU->V[0xF] = activeCPU->V[(activeCPU->opcode & 0xF0) >> 4] & 128;
+	activeCPU->V[(activeCPU->opcode & 0xF00) >> 8] = activeCPU->V[(activeCPU->opcode & 0xF0/*0xF00*/) >> 4/*8*/] << 1; //try with VX<<1 instead of VY<<1
 }
 void opcode_SNE(void) {
 	cpu_debug("  - SNE");
@@ -343,7 +346,7 @@ void opcode_SNE(void) {
 }
 void opcode_LDI(void) {
 	cpu_debug("  - LDI");
-	activeCPU->I = activeCPU->opcode & 0xFFF;
+	activeCPU->I = (activeCPU->opcode & 0xFFF);
 }
 void opcode_JPA(void) {
 	cpu_debug("  - JPA");
@@ -355,7 +358,7 @@ void opcode_RND(void) {
 }
 void opcode_DRW(void) {
 	cpu_debug("  - DRW");
-	int height = activeCPU->opcode & 0xF;
+	int height = (activeCPU->opcode & 0xF);
 	int startx = activeCPU->V[(activeCPU->opcode &0xF00) >> 8], starty = activeCPU->V[(activeCPU->opcode &0xF0) >> 4];
 	activeCPU->V[0xF] = 0;
 	
@@ -366,10 +369,10 @@ void opcode_DRW(void) {
 			int bit = (byte & (128 >> x)) >> (7-x);
 			int t = (starty + y) * activeScreen->width + startx + x;
 			
-			if(bit == 1 && activeScreen->datas[t] == 1)
+			if((bit == 1) && (activeScreen->datas[t] == 1))
 				activeCPU->V[0xF] = 1;
 			
-			activeScreen->datas[t] ^= t;
+			activeScreen->datas[t] ^= bit;
 		}
 	}
 	
@@ -377,9 +380,13 @@ void opcode_DRW(void) {
 }
 void opcode_SKP(void) { //TODO
 	cpu_debug("  - SKP");
+	if(isKeyPressed(activeKeypad->nspireKeys[activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]]))
+		activeCPU->pc += 2;
 }
 void opcode_SKNP(void) { //TODO
 	cpu_debug("  - SKNP");
+	if(!isKeyPressed(activeKeypad->nspireKeys[activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]]))
+		activeCPU->pc += 2;
 }
 void opcode_LD_delaytimer(void) {
 	cpu_debug("  - LD_delaytimer");
@@ -387,6 +394,7 @@ void opcode_LD_delaytimer(void) {
 }
 void opcode_LD_key(void) {
 	cpu_debug("  - LD_key");
+	//TODO
 }
 void opcode_STO_delaytimer(void) {
 	cpu_debug("  - STO_delaytimer");
@@ -402,7 +410,7 @@ void opcode_ADDI(void) {
 }
 void opcode_HEXI(void) {
 	cpu_debug("  - SPRITEI");
-	activeCPU->I = 0x50 + 5 * activeCPU->V[(activeCPU->opcode & 0xF00) >> 8];
+	activeCPU->I = (0x50 + (5 * activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]));
 }
 void opcode_STO_BCD(void) {
 	cpu_debug("  - STO_BCD");
