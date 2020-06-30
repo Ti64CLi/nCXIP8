@@ -36,32 +36,41 @@ int main(int argc, char *argv[]){
 	
 	init_display();
 	
+	int opcode_to_skip = 16; //default : 1
+	
 	while(!isKeyPressed(KEY_NSPIRE_ESC)) {
+		for(int i = 0; i <= opcode_to_skip; i++) {
 #ifdef DEBUG
-		if(isKeyPressed(KEY_NSPIRE_ENTER)) {//DEBUG only
-			char buf[12];
-			sprintf(buf, "PC = 0x%4.4X", cpu.pc);
-			cpu_debug(buf);
+			if(isKeyPressed(KEY_NSPIRE_ENTER)) {//DEBUG only
+				char buf[12];
+				sprintf(buf, "PC = 0x%4.4X", cpu.pc);
+				cpu_debug(buf);
 #endif
-			emulate_cycle();
+				if(!i)
+					emulate_cycle();
 #ifdef DEBUG
-			while(isKeyPressed(KEY_NSPIRE_ENTER));
-		}
+				while(isKeyPressed(KEY_NSPIRE_ENTER));
+			}
 
-		if(isKeyPressed(KEY_NSPIRE_S)) { //For debug purposes only
-			for(int i = 0; i < 8; i++)
-				printf("V%1.1X = 0x%2.2X  V%1.1X = 0x%2.2X\n", i, cpu.V[i], i+8, cpu.V[i+8]);
-			printf("PC = 0x%4.4X  SP = 0x%1.1X\n", cpu.pc, cpu.sp);
-			printf("I = 0x%4.4X\n", cpu.I);
-			while(isKeyPressed(KEY_NSPIRE_D));
-		}
+			if(isKeyPressed(KEY_NSPIRE_S)) { //For debug purposes only
+				for(int i = 0; i < 8; i++)
+					printf("V%1.1X = 0x%2.2X  V%1.1X = 0x%2.2X\n", i, cpu.V[i], i+8, cpu.V[i+8]);
+				printf("PC = 0x%4.4X  SP = 0x%1.1X\n", cpu.pc, cpu.sp);
+				printf("I = 0x%4.4X\n", cpu.I);
+				while(isKeyPressed(KEY_NSPIRE_D));
+			}
 #endif
+			refresh_active_screen();
+			msleep(1);
+		}
 		
-		refresh_active_screen();
+		//refresh_active_screen();
 		
-		msleep(5);
+		//msleep(1);
 			
 		//TODO : keys and timers
+		
+		set_keypad_state(); //too slow ?
 		//Timers : use Timer 1 or 2 (0x900C0000 or 0x900D0000)
 		//first support of timers -> to continue
 		if(cpu.delayTimer > 0)

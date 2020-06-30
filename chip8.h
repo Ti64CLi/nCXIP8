@@ -76,6 +76,7 @@ int refresh_active_screen(void);
 int init_keypad(key8_t *); //init the given keypad
 int init_active_keypad(void); //init the keypad currently used
 void set_active_keypad(key8_t *); //change the working keypad
+void set_keypad_state(void);
 
 //suffixe _num when the opcode exists with both reg and immediate value as operand
 //any other suffixes for further informations

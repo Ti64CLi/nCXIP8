@@ -167,6 +167,11 @@ void set_active_keypad(key8_t *keypad) {
 	activeKeypad = keypad;
 }
 
+void set_keypad_state(void) {
+	for(int i = 0; i < 16; i++)
+		activeKeypad->keysState[i] = isKeyPressed(defaultNspireKeys[i]); //TODO : add support for activeKeypad->nspireKeys
+}
+
 //general purposes functions
 int open_chip8_ROM(const char *filename) {
 	FILE *rom = NULL;
@@ -188,6 +193,8 @@ int open_chip8_ROM(const char *filename) {
 }
 
 void emulate_cycle(void) {
+	set_keypad_state();
+	
 	cpu_debug("Emulating cycle...");
 	fetch_opcode();
 	opcodeList[(activeCPU->opcode & 0xF000) >> 12](); //decoding and executing opcode
@@ -378,14 +385,14 @@ void opcode_DRW(void) {
 	
 	activeScreen->drawFlag = 1;
 }
-void opcode_SKP(void) { //TODO
+void opcode_SKP(void) { //TODO : add proper support
 	cpu_debug("  - SKP");
-	if(isKeyPressed(/*activeKeypad->nspireKeys*/defaultNspireKeys[(activeCPU->V[(activeCPU->opcode & 0xF00) >> 8])]))
+	if(activeKeypad->keysState[activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]] || isKeyPressed(defaultNspireKeys[activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]]))
 		activeCPU->pc += 2;
 }
-void opcode_SKNP(void) { //TODO
+void opcode_SKNP(void) { //TODO : add proper support
 	cpu_debug("  - SKNP");
-	if(!(isKeyPressed(/*activeKeypad->nspireKeys*/defaultNspireKeys[(activeCPU->V[(activeCPU->opcode & 0xF00) >> 8])])))
+	if(!activeKeypad->keysState[activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]] || !isKeyPressed(defaultNspireKeys[activeCPU->V[(activeCPU->opcode & 0xF00) >> 8]]))
 		activeCPU->pc += 2;
 }
 void opcode_LD_delaytimer(void) {
@@ -395,6 +402,7 @@ void opcode_LD_delaytimer(void) {
 void opcode_LD_key(void) {
 	cpu_debug("  - LD_key");
 	//TODO
+	wait_key_pressed();
 }
 void opcode_STO_delaytimer(void) {
 	cpu_debug("  - STO_delaytimer");
